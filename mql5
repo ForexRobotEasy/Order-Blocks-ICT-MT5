@@ -1,0 +1,86 @@
+mql5
+//+------------------------------------------------------------------+
+//|                                            Order Blocks ICT MT5  |
+//|                                                  forexroboteasy.com |
+//|                                                       Forex Robot Easy Team |
+//+------------------------------------------------------------------+
+
+// Define input parameters
+input int TimeFrame = PERIOD_H1; // Default time frame is H1
+input int OrderBlockPeriods = 7; // Number of periods to consider for order blocks
+input double Sensitivity = 0.1; // Sensitivity level for identifying support and resistance levels
+
+// Define global variables
+datetime orderBlockTime; // Time of the order block
+double orderBlockPrice; // Price of the order block
+bool isOrderBlockUp; // Flag indicating whether the order block is bullish or bearish
+
+//+------------------------------------------------------------------+
+//| Custom indicator initialization function                         |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+    // Set the indicator buffers
+    SetIndexBuffer(0, orderBlockTime);
+    SetIndexBuffer(1, orderBlockPrice);
+    SetIndexBuffer(2, isOrderBlockUp);
+
+    // Set the indicator label
+    IndicatorShortName('Order Blocks ICT MT5');
+
+    return(INIT_SUCCEEDED);
+}
+
+//+------------------------------------------------------------------+
+//| Custom indicator iteration function                              |
+//+------------------------------------------------------------------+
+int OnCalculate(const int rates_total,
+                const int prev_calculated,
+                const datetime &time[],
+                const double &open[],
+                const double &high[],
+                const double &low[],
+                const double &close[],
+                const long &tick_volume[],
+                const long &volume[],
+                const int &spread[])
+{
+    // Calculate the order blocks
+    for(int i = rates_total - 1; i >= OrderBlockPeriods; i--)
+    {
+        double previousHigh = 0;
+        double previousLow = 0;
+
+        // Find the highest high and lowest low for the previous periods
+        for(int j = i - OrderBlockPeriods + 1; j <= i; j++)
+        {
+            if(high[j] > previousHigh || previousHigh == 0)
+                previousHigh = high[j];
+
+            if(low[j] < previousLow || previousLow == 0)
+                previousLow = low[j];
+        }
+
+        // Check if the current period is an order block
+        if(high[i] >= previousHigh + Sensitivity * (previousHigh - previousLow))
+        {
+            orderBlockTime = time[i];
+            orderBlockPrice = previousHigh;
+            isOrderBlockUp = true;
+        }
+        else if(low[i] <= previousLow - Sensitivity * (previousHigh - previousLow))
+        {
+            orderBlockTime = time[i];
+            orderBlockPrice = previousLow;
+            isOrderBlockUp = false;
+        }
+        else
+        {
+            orderBlockTime = 0;
+            orderBlockPrice = 0;
+            isOrderBlockUp = false;
+        }
+    }
+
+    return(rates_total);
+}
